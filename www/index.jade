@@ -1,0 +1,130 @@
+extends layout
+
+block content
+	.container-fluid
+		.row
+			.col-sm-12
+				div#mapMe.text-center
+					h1 Get Route
+		.row
+			.col-sm-12.text-center.myMapBox
+				#mapid(style="margin-top: 20px;width: 90%; height: 800px; margin:0 auto;")
+
+	script(type="text/javascript" src="cordova.js")
+	script(type="text/javascript" src="./js/index.js")
+	script(type="text/javascript").
+					$(document).ready(function(){
+						
+						var destLon;
+						var destLat;
+						var startLat;
+						var startLon;
+
+						$('#mapMe').on('click',function(){
+							doRoute();
+						});
+						//- ##### Mapping ##############################################
+						// an array of postcodes (will be drawn from the DB)
+						var mycodes = [
+							//- "TR15 3PZ",
+							//- "TR15 1TA",
+							//- "TR18 2TG",
+							//- "PL31 1DD",
+							//- "TR26 2BB",
+							//- "TR7 3BH",
+							//- "TR1 3QN",
+							//- "TR11 4LH",
+							//- "TR14 7PP",
+							//- "TR27 4DN",
+							"TR13 8NR"
+							//-"OX26 2EJ",
+							//- "TR26 2BB",
+							//- "G3 6RQ"
+						];
+						// define a couple of globals
+						var theLoc;
+						var baseURL = "http://api.postcodes.io/postcodes/";
+						// define the marker icon
+						var redIcon = L.icon({
+							iconUrl: './img/marker-red.png',
+							iconSize:     [25, 41], // size of the icon
+							iconAnchor:   [25, 41], // point of the icon which will correspond to marker's location
+							popupAnchor:  [-3, -76] // point from which the popup should open relative to the iconAnchor
+						});	
+						var blueIcon = L.icon({
+							iconUrl: './img/marker-blue.png',
+							iconSize:     [25, 41], // size of the icon
+							iconAnchor:   [25, 41], // point of the icon which will correspond to marker's location
+							popupAnchor:  [-3, -76] // point from which the popup should open relative to the iconAnchor
+						});
+
+						var mymap = L.map('mapid')//.setView([50.2516, -5.10178], 10);
+						mymap.locate({setView: true, maxZoom: 16});
+
+						// draw the map using the OSM tile set
+						function drawMap(){
+							// define the map, specify its DOM id, centre, and initial zoom
+							L.tileLayer('https://api.mapbox.com/styles/v1/{mapUser}/{mapId}/tiles/256/{z}/{x}/{y}?access_token={accessToken}', {
+								attribution: '&copy; MapBox',
+								mapUser:'drum',
+								mapId:'cisk049xg003o2yjmqlcdf1by',
+								accessToken: 'pk.eyJ1IjoiZHJ1bSIsImEiOiJjaXM2MXhvcXQwMDIxMnpzZHpod2Eyb3R1In0.lpjqAvVqJjWL0wHXTwzD7g'
+							}).addTo(mymap);
+
+
+							// loop through the array of postcodes
+							for(x = 0;x < mycodes.length;x++){
+								// remove whitespace
+								var tidy = mycodes[x].replace(" ","");
+								// concantate with baseURL
+								theLoc = baseURL + tidy;
+								// send this to the getLoc function and get the data back from the postcodes API
+								getLoc(theLoc, function(data){
+									//grab longitude and latitude
+									var thisLon = data.result.longitude
+									var thisLat = data.result.latitude;
+									// add a marker to the map at this location
+									destLon = thisLon
+									destLat = thisLat;
+									//-console.log(">> " + destLon + "," + destLat);
+									//-L.marker([thisLat,thisLon],{icon: redIcon}).addTo(mymap);
+									console.log("destination >> " + destLat + "," + destLon);
+								});
+
+							}
+
+							navigator.geolocation.getCurrentPosition(displayLocation);
+						};
+						// get the route
+						function doRoute(){
+							L.Routing.control({
+								waypoints: [
+									L.latLng(startLat, startLon),
+									L.latLng(destLat, destLon)
+								],
+								fitSelectedRoutes:true,
+								routeWhileDragging: true
+							}).addTo(mymap);
+						}
+						// handle the geocoding of postcodes through the postcodes API
+						function getLoc(dataString,callback) {
+							$.ajax({
+								url : dataString,
+								type: 'GET',
+								success : callback
+							})
+						};
+
+						// add location via browser geolocation
+						function displayLocation(position) {
+							var lat = position.coords.latitude;
+							var lng = position.coords.longitude;
+							startLat = lat;
+							startLon = lng;
+							L.marker([lat, lng]).addTo(mymap);
+							console.log("start >> " + startLat + "," + startLon);
+
+						}
+
+						drawMap();
+					});
